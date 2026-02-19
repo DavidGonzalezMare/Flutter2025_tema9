@@ -4,13 +4,13 @@
 
 [2. Activando RLS y Autenticación](#_apartado2)
 
-[3. Modelo. Clase Planeta](#_apartado3)
+[3. Adaptamos nuestro código](#_apartado3)
 
-[4. Data Source](#_apartado4)
+[4. Creación de una pantalla de login](#_apartado4)
 
-[5. Repositorio y Provider](#_apartado5)
+[5. Mejoras en la interfaz](#_apartado5)
 
-[6. Interfaz](#_apartado6)
+[6. Trabajo con API Rest](#_apartado6)
 
 [7. Posibles mejoras](#_apartado7)
 
@@ -21,7 +21,7 @@
 
 # <a name="_apartado1"></a>1. Introducción
 
-Como vimos en el tema anterior *Supabase* es una plataforma de código abierto que utiliza *PostgreSQL* como base de datos. 
+Como vimos en el tema anterior, *Supabase* es una plataforma de código abierto que utiliza *PostgreSQL* como base de datos. 
 Además, proporciona una serie de herramientas y servicios para gestionar usuarios y sus permisos, facilitando la creación de sistemas de autenticación y autorización seguros
 
 ## ¿Para qué sirve la autenticación con Supabase?
@@ -36,7 +36,7 @@ La autenticación con Supabase se utiliza para verificar la identidad de los usu
 - **SSO (Single Sign-On)**: Autenticación única para acceder a múltiples aplicaciones.
   
 ## Generalidades de la autenticación con Supabase
-- **Tokens JWT**: Supabase utiliza JSON Web Tokens (JWT) para la autenticación. Estos tokens contienen información sobre el usuario y se envían con cada solicitud para verificar la identidad del usuario 1
+- **Tokens JWT**: Supabase utiliza JSON Web Tokens (JWT) para la autenticación. Estos tokens contienen información sobre el usuario y se envían con cada solicitud para verificar la identidad del usuario.
   
 - **Seguridad a nivel de fila (RLS)**: Supabase permite definir políticas de seguridad a nivel de fila en la base de datos, lo que significa que puedes controlar el acceso a los datos a nivel de cada fila en una tabla.
 - **Integración con el ecosistema de Supabase**: La autenticación está diseñada para integrarse perfectamente con otros servicios de Supabase, como la base de datos y las funciones de almacenamiento.
@@ -45,7 +45,6 @@ La autenticación con Supabase se utiliza para verificar la identidad de los usu
 
 ## Empezamos
 Para empezar a trabajar con la autenticación de Supabase en Flutter vamos a utilizar la aplicación de estudiantes que implementamos en el tema anterior y que ya tenía una BD en Supabase.
-Recordemos que a la tabla con la que trabajabamos en esa aplicación 
 
 Nuestra aplicación trabaja con la tabla `students` que habíamos definido en nuestra BD de Supabase y a la cuál habíamos desactivado **RLS (Row Level Security - Seguridad a Nivel de Fila)**. Es una característica de PostgreSQL que Supabase utiliza para controlar qué filas de una tabla puede acceder un usuario. Esto se logra definiendo políticas que filtran las filas visibles para un usuario según su identidad u otros atributos
 
@@ -55,14 +54,14 @@ Volvemos a activarlo y posteriormente definiremos esas políticas para permitir 
 
 # <a name="_apartado2"></a>2. Activando RLS y Autenticación
 
-Vamos en primer lugar a activar RLS en nuestra tabla. Además lo vamos a hacer para que incluso estando activado podamos seguir accediendo a la misma. Para ello, en supabase activamos RLS para nuestra tabla students:
+Vamos, en primer lugar, a activar RLS en nuestra tabla. Además lo vamos a hacer para que incluso estando activado podamos seguir accediendo a la misma. Para ello, en supabase activamos RLS para nuestra tabla students:
 
 ![Habilitar RLS](./images/imagen02.png)
 
 
 ### Empezamos con la Autenticación
 
-En Supabase nos vamos a la opción Authentication ->Sign in/Providers y dejamos las opciones así:
+En Supabase nos vamos a la opción **Authentication ->Sign in/Providers** y dejamos las opciones así:
 
 ![Providers](./images/imagen03.png)
 
@@ -187,8 +186,6 @@ Para evitar errores posteriores por doble inicialización del cliente vamos a pa
 
 En el fichero `main.dart`:
 
-CAMBIAR ANON KEY AQUÍ
-
 ```dart
 
 Future<void> main() async {
@@ -203,7 +200,7 @@ Future<void> main() async {
 
 ```
 
-**Nota importante**
+**⚠️  Nota importante**
 
 Supabase Flutter conserva automáticamente la sesión del usuario entre reinicios de la app.
 Si el usuario ya estaba autenticado antes de cerrar la aplicación,
@@ -283,7 +280,6 @@ bool get isAdmin => _isAdmin;
 // Llama a esto tras login (o al iniciar si hay sesión)
 Future<void> loadAdminFlag() async {
   _isAdmin = await _repository.isCurrentUserAdmin();
-  notifyListeners();
 }
 ```
 
@@ -618,13 +614,13 @@ class AuthGate extends StatelessWidget {
 
 ```
 
-Esto, de momento, no funciona con la versión web, porque supabase no localiza bien al principio si hay una sesión abierta en el navegador...sí funciona en dispositivo Android.
+Esto, de momento, **no funciona con la versión web**, porque supabase no localiza bien al principio si hay una sesión abierta en el navegador...**sí funciona en dispositivo Android**.
 
 ### Cerrar sesión
 
 Vamos a aprender en este apartado cómo cerrar la sesión.
 
-Recordemos que en el app_repository.dart habíamos creado la función para cerrar sesión de Auth:
+Recordemos que en el `app_repository.dart` habíamos creado la función para cerrar sesión de Auth:
 
 ```dart
   Future<void> signOut() async {
@@ -633,7 +629,7 @@ Recordemos que en el app_repository.dart habíamos creado la función para cerra
   }
 ```
 
-y creamos en nuestro Provider la función correspondiente:
+y creamos en nuestro `Provider` la función correspondiente:
 
 ```dart
   Future<void> logout() async {
@@ -785,6 +781,10 @@ class DataSourceRest implements DataSource{
       "Content-Type": "application/json",
       "Accept": "application/json",
       "Prefer": "return=minimal",
+      // Si queremos trabajar en tablas bajo un esquema
+      "Accept-Profile": "_pmdm",
+      "Content-Profile": "_pmdm",
+
     };
   }
 
@@ -850,10 +850,22 @@ Se nos está pasando ese proveedor de JWT (JSON Web Token), que recogerá el rep
 
 Realmente se nos está pasando la función que lo llama (y que el `dataSource` llamará mediante la función `buildHeaders` en cada request).
 
-REVISAR ESTO. DE MOMENTO NO FUNCIONA.
-Detalle:
-Si queremos acceder a una tabla dentro de un esquema de Supabase mediante las llamadas API Rest lo podemos hacer: sustituyendo `students` por, por ejemplo,: `_pmdm.students`
+<hr>
 
+Detalle:
+Si queremos acceder a una tabla dentro de un esquema de Supabase mediante las llamadas API Rest lo podemos hacer poniendo estas cabeceras:
+
+```dart
+      // Si queremos trabajar en tablas bajo un esquema
+      "Accept-Profile": "_pmdm",
+      "Content-Profile": "_pmdm",
+```
+Las quitaremos si queremos trabajar con tablas en el esquema `public`.
+
+⚠️ Importante.
+
+Si dentro de un esquema creamos una nueva tabla, debermos voler a ejecutar los `GRANT` que vimos en el tema anterior.
+<hr>
 
 ### AppRepository
 
@@ -977,7 +989,7 @@ class AppRepository {
 
   ⚠️ Importante
 
-  Aunque utilicemos la API REST de Supabase para todas las operaciones con la base de datos, debemos inicializar el cliente de Supabase en main.dart.
+  Aunque utilicemos la API REST de Supabase para todas las operaciones con la base de datos, debemos inicializar el cliente de Supabase en `main.dart`.
 
   El motivo es que la gestión de autenticación y sesión (login, logout, access token y refresh token, renovación automática del token, usuario actual) la realiza el SDK oficial de Supabase en Flutter.
 
@@ -1093,6 +1105,7 @@ Desde una app Flutter, las operaciones típicas son estas:
 - Descargar u obtener una URL de un archivo
 
 - Listar archivos
+- 
 - Borrar o reemplazar archivos
 
 **Autenticación + Reglas RLS**
@@ -1115,7 +1128,7 @@ Creamos el bucket público:
 
 ### Instalación de librerías
 
-Creamos un **nuevo proyecto** y vamos a instalar los paquetes `supabase_flutter` (ya la conocemos), `image_picker` (para elegir imágenes) y file_picker (elegir ficheros arbitrarios) en el mismo:
+Creamos un **nuevo proyecto** y vamos a instalar los paquetes `supabase_flutter` (ya la conocemos), `image_picker` (para elegir imágenes) y `file_picker` (elegir ficheros arbitrarios) en el mismo:
 
 ```
 flutter pub add supabase_flutter
