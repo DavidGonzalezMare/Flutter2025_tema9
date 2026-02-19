@@ -177,6 +177,8 @@ to authenticated
 using ( id = auth.uid() );
 ```
 
+<br>
+
 # <a name="_apartado3"></a>3. Adaptamos nuestro código
 
 ### Pasamos la inicialización del cliente de Supabase al main
@@ -311,6 +313,8 @@ y por último añadimos las funciones de login y register:
     await loadAdminFlag(); // si tu proyecto está sin confirmación, hay sesión tras el signUp
   }
 ```
+
+<br>
 
 # <a name="_apartado4"></a>4. Creación de una pantalla de login
 
@@ -978,7 +982,7 @@ class AppRepository {
   El motivo es que la gestión de autenticación y sesión (login, logout, access token y refresh token, renovación automática del token, usuario actual) la realiza el SDK oficial de Supabase en Flutter.
 
   Nuestro DataSource REST solo envía peticiones HTTP, pero el JWT del usuario que necesitamos en la cabecera
-  Authorization: Bearer <token> lo **obtenemos del cliente oficia**l, que debe estar previamente inicializado.
+  Authorization: Bearer \<token\> lo **obtenemos del cliente oficial**, que debe estar previamente inicializado.
 
   En la práctica:
   - Inicializamos Supabase en main.dart.
@@ -999,7 +1003,7 @@ Planteamos aquí algunas posibles mejoras o upgrades de nuestra aplicación que 
 - Implementar la app que hemos hecho hasta la práctica 8 incluyendo estudiantes y cursos.
 
 
-**Realtime**
+### Realtime (Sin probar)
 
 Si quisiéramos tener un Stream real si hay cambios en nuestra tabla tendríamos que hacer:
 
@@ -1055,7 +1059,7 @@ Stream<List<Student>> streamAllStudents() {
 
 <br>
 
-# <a name="_apartado7"></a>8. Supabase Storage
+# <a name="_apartado8"></a>8. Supabase Storage
 
 Supabase Storage es el servicio que te permite guardar y servir archivos: imágenes, PDFs, audios, documentos, etc.
 
@@ -1111,13 +1115,11 @@ Creamos el bucket público:
 
 ### Instalación de librerías
 
-Creamos un nuevo proyecto y vamos a instalar los paquetes `supabase_flutter` (ya la conocemos), `image_picker` (para elegir imágenes) y file_picker (elegir ficheros arbitrarios) en el mismo:
+Creamos un **nuevo proyecto** y vamos a instalar los paquetes `supabase_flutter` (ya la conocemos), `image_picker` (para elegir imágenes) y file_picker (elegir ficheros arbitrarios) en el mismo:
 
 ```
 flutter pub add supabase_flutter
-
 flutter pub add image_picker
-
 flutter pub add file_picker
 ```
 
@@ -1260,9 +1262,9 @@ class _StoragePingPageState extends State<StoragePingPage> {
 }
 ```
 
-  Atención. 
+⚠️ Atención. 
 
-  El widget `Wrap`, que no hemos trabajado hasta ahora, permite es similar a un `Row` o `Column`, pero con la diferencia de que los elementos “saltan” a la siguiente línea o columna en lugar de desbordar o generar un error.
+El widget `Wrap`, que no hemos trabajado hasta ahora, permite es similar a un `Row` o `Column`, pero con la diferencia de que los elementos “saltan” a la siguiente línea o columna en lugar de desbordar o generar un error.
 
 Nos da, al pulsar ambos botones:
 
@@ -1270,7 +1272,7 @@ Nos da, al pulsar ambos botones:
 
 Por tanto, no nos permite subir archivos a nuestro bucket.
 
-Nos vamos al editor SQL de Supabase y ejecutamos estas políticas para permitir inserta datos a los usuarios anon y autenticados.
+Nos vamos al editor SQL de Supabase y ejecutamos estas políticas para **permitir insertar datos** a los usuarios anon y autenticados.
 
 ```sql
 -- Permitir listar/seleccionar metadatos en el bucket
@@ -1287,6 +1289,7 @@ for insert
 to anon, authenticated
 with check (bucket_id = 'public_media');
 ```
+<br>
 
 Como vemos, ahora sí que nos permite subir ficheros a nuestro bucket, obteniendo además la url:
 
@@ -1578,13 +1581,13 @@ y la llamamos en el botón correspondiente:
                 ),
 ```
 
-Es posible que en Android sea necesario dar permisos de cámara y que no funcione correctamente en Web.
+Es **posible** que en Android sea necesario dar **permisos de cámara** y que **no funcione correctamente en Web**.
 
 ### Mejora del código
 
 Tengamos en cuenta que prácticamente todo el código de `_pickFromGalleryAndUpload` y `_pickFromCameraAndUpload` es el mismo.
 
-Os dejo aquí el código de la pantalla completa unificando esas dos funciones:
+Os dejo aquí el código de la pantalla completa **unificando** esas dos funciones:
 
 ```dart
 class StorageImageScreen extends StatefulWidget {
@@ -1772,4 +1775,53 @@ class _StorageImageScreenState extends State<StorageImageScreen> {
 }
 ```
 
+### Bucket privado (Sin probar)
 
+Como hemos visto, nuestro bucket es público, lo que significa que cualquier usuario puede acceder y manipular esas imágenes.
+
+Existe la posibilida de hacer que nuestro bucket sea privado. El enfoque que le vamos a dar es que cualquier usuario que esté **logeado puede ver y subir imágenes**. Mientras que si no estamos logeados no podemos ver nada.
+
+Una vez que hemos creado nuestro bucket privado, debemos añadir las siguientes políticas:
+
+- Para permitir listas datos solo a autenticados:
+
+```sql
+create policy "authenticated can list"
+on storage.objects
+for select
+to authenticated
+using (bucket_id = 'private_media');
+```
+
+- Permitir descargar o acceder vía URL firmada (solo autenticados, igual que el anterior):
+
+```sql
+create policy "authenticated can download"
+on storage.objects
+for select
+to authenticated
+using (bucket_id = 'private_media');
+```
+
+-  Permitir subir ficheros solo a autenticados:
+
+```sql
+create policy "authenticated can upload"
+on storage.objects
+for insert
+to authenticated
+with check (bucket_id = 'private_media');
+```
+
+A continuación, en nuestra app de flutter no podemos utilizar `getPublicUrl` para obtener la url de la imagen sino que debemos utilizar `createSignedUrl`:
+
+```dart
+final signedUrl = await supabase.storage
+  .from('private_media')
+  .createSignedUrl(path, 60 * 60); // válido 1h
+```
+y
+
+```dart
+Image.network(signedUrl)
+```
